@@ -1,9 +1,10 @@
-def javaVersion = JavaVersion.VERSION_1_7
 apply plugin: 'com.android.application'
 apply plugin: 'com.tencent.tinker.patch'
+def javaVersion = JavaVersion.VERSION_1_7
+
 android {
-    compileSdkVersion 24
-    buildToolsVersion "24.0.2"
+    compileSdkVersion 23
+    buildToolsVersion "23.0.2"
     compileOptions {
         sourceCompatibility javaVersion
         targetCompatibility javaVersion
@@ -12,7 +13,6 @@ android {
     dexOptions {
         jumboMode = true
     }
-
     signingConfigs {
         release {
             try {
@@ -20,108 +20,92 @@ android {
                 storePassword "testres"
                 keyAlias "testres"
                 keyPassword "testres"
+                v2SigningEnabled false
             } catch (ex) {
                 throw new InvalidUserDataException(ex.toString())
             }
         }
-        debug {
-            storeFile file("./keystore/debug.keystore")
-        }
+//        debug {
+//            storeFile file("./keystore/debug.keystore")
+//        }
+
     }
-        defaultConfig {
+    defaultConfig {
+
         applicationId "com.example.danfengwang.tinkerfixdemo"
         minSdkVersion 15
-        targetSdkVersion 24
+        targetSdkVersion 23
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-            /**
-             * you can use multiDex and install it in your ApplicationLifeCycle implement
-             */
-            multiDexEnabled true
-            /**
-             * not like proguard, multiDexKeepProguard is not a list, so we can't just
-             * add for you in our task. you can copy tinker keep rules at
-             * build/intermediates/tinker_intermediates/tinker_multidexkeep.pro
-             */
-            multiDexKeepProguard file("keep_in_main_dex.txt")
-            /**
-             * buildConfig can change during patch!
-             * we can use the newly value when patch
-             */
-            buildConfigField "String", "MESSAGE", "\"I am the base apk\""
-//        buildConfigField "String", "MESSAGE", "\"I am the patch apk\""
-            /**
-             * client version would update with patch
-             * so we can get the newly git version easily!
-             */
-            buildConfigField "String", "CLIENTVERSION", "\"${getTinkerIdValue()}\""
-            buildConfigField "String", "PLATFORM",  "\"all\""
+        multiDexEnabled true
+        multiDexKeepProguard file("keep_in_main_dex.txt")
+
+        buildConfigField "String", "MESSAGE", "\"I am the base apk\""
+
+        buildConfigField "String", "CLIENTVERSION", "\"${getTinkerIdValue()}\""
+        buildConfigField "String", "PLATFORM",  "\"all\""
+
     }
+
+
+
     buildTypes {
         release {
             minifyEnabled true
-            signingConfig signingConfigs.release
+
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
-        debug {
-            debuggable true
-            minifyEnabled false
-            signingConfig signingConfigs.debug
+//        debug {
+//            debuggable true
+//            minifyEnabled false
+//            signingConfig signingConfigs.debug
+//        }
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
         }
     }
-        sourceSets {
-            main {
-                jniLibs.srcDirs = ['libs']
-            }
-        }
-    }
-
-def bakPath = file("${buildDir}/bakApk/")
+}
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile('com.tencent.tinker:tinker-android-anno:1.7.0')
-    //tinker's main Android lib
-    compile('com.tencent.tinker:tinker-android-lib:1.7.0')
-    compile "com.android.support:multidex:1.0.1"
-    compile 'com.android.support:appcompat-v7:24.2.1'
+    compile 'com.android.support:appcompat-v7:23.4.0'
+    compile 'com.android.support:multidex:1.0.1'
+    //可选，用于生成application类
+    compile 'com.tencent.tinker:tinker-android-anno:1.7.0'
+    //tinker的核心库
+    compile 'com.tencent.tinker:tinker-android-lib:1.7.0'
     testCompile 'junit:junit:4.12'
-
 }
 def gitSha() {
-    return 'git rev-parse --short HEAD'.execute().text.trim();
-//    try {
-//        String gitRev = 'git rev-parse --short HEAD'.execute().text.trim()
-//        if (gitRev == null) {
-//            throw new GradleException("can't get git rev, you should add git to system path or just input test value, such as 'testTinkerId'")
-//        }
-//        return gitRev
-//    } catch (Exception e) {
-//        throw new GradleException("can't get git rev, you should add git to system path or just input test value, such as 'testTinkerId'")
-//    }
+    try {
+        String gitRev = 'git rev-parse --short HEAD'.execute().text.trim()
+        if (gitRev == null) {
+            throw new GradleException("can't get git rev, you should add git to system path or just input test value, such as 'testTinkerId'")
+        }
+        return gitRev
+    } catch (Exception e) {
+        throw new GradleException("can't get git rev, you should add git to system path or just input test value, such as 'testTinkerId'")
+    }
 }
 
-
-/**
- * you can use assembleRelease to build you base apk
- * use tinkerPatchRelease -POLD_APK=  -PAPPLY_MAPPING=  -PAPPLY_RESOURCE= to build patch
- * add apk from the build/bakApk
- */
+def bakPath = file("${buildDir}/bakApk/")
 ext {
     //for some reason, you may want to ignore tinkerBuild, such as instant run debug build?
     tinkerEnabled = true
 
     //for normal build
     //old apk file to build patch apk
-    tinkerOldApkPath = "${bakPath}/app-armeabi-debug.apk.apk"
+    tinkerOldApkPath = "${bakPath}/app-debug-1019-15-16-03.apk"
     //proguard mapping file to build patch apk
     tinkerApplyMappingPath = "${bakPath}/"
     //resource R.txt to build patch apk, must input if there is resource changed
-    tinkerApplyResourcePath = "${bakPath}/"
+    tinkerApplyResourcePath = "${bakPath}/app-debug-1019-15-16-03-R.txt"
 
     //use for build all flavor, just fill this field
     tinkerBuildFlavorDirectory = "${bakPath}/app-1014-13-35-12"
@@ -186,7 +170,6 @@ if (buildWithTinker()) {
          * we will use the sign config with your build type
          */
         useSign = true
-
         /**
          * Warning, applyMapping will affect the normal android build!
          */
@@ -427,3 +410,8 @@ if (buildWithTinker()) {
         }
     }
 }
+
+
+
+
+
